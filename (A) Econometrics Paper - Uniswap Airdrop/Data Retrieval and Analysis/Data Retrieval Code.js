@@ -91,100 +91,6 @@ async function getAddresses() {
 	fs.writeFileSync('./addresses.json',JSON.stringify(data));
 }
 
-// retrieve needed information about recipients of the airdrop
-async function getAddressDetails(addresses,i,acc,details) {
-	const transferSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-	const uniTokenAddress = "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984";
-	var destinationContract = {};
-	for (var count = i; count < addresses.length ;count++){
-			if (count % 1000 == 999) { 
-				fs.writeFileSync('./addressDetails.json',JSON.stringify([count,acc]));
-				console.log(count.toString() + ' out of ' + addresses.length.toString());
-			}
-			var address = addresses[count];
-			const airdropTransaction = details[address][0][2];
-			const airdropAmount = BigNumber(details[address][0][1]);
-			var code = await eth.eth.getCode("0x"+address.slice(26));
-			try{
-			var logsfrom = await eth.eth.getPastLogs({
-				fromBlock: '0x0',
-				toBlock: '0xcb66aa',
-				address: uniTokenAddress,
-			topics: [transferSignature, address]});
-			var logsto = await eth.eth.getPastLogs({
-				fromBlock: '0x0',
-				toBlock: '0xcb66aa',
-				address: uniTokenAddress,
-			topics: [transferSignature,null,address]});
-			
-			
-			var indexfrom = 0;
-			var indexto = 0;
-			var otherUNI = false;
-			var amountSold = BigNumber(0);
-			var sales = [];
-			var oneShotSold = false;
-			var bothTransfer = false;
-			var EOAtransfer = false;
-			while (true) {
-				var fromlog = logsfrom[indexfrom];
-				var tolog = logsto[indexto];
-				if (fromlog == undefined || tolog == undefined){break;}
-				if (fromlog['blockNumber'] > tolog['blockNumber']){
-					if (tolog['transactionHash'] != airdropTransaction) {
-						otherUNI = true;
-						break;
-					}
-					indexto = indexto + 1;
-				}
-				if (fromlog['blockNumber'] < tolog['blockNumber']){
-					var recipientContract = false;
-					if (!(fromlog['topics'][2] in destinationContract)){ destinationContract[fromlog['topics'][2]] = (await eth.eth.getCode("0x"+fromlog['topics'][2].slice(26))) != "0x"; }
-					if (destinationContract[fromlog['topics'][2]]){recipientContract = true;}
-					if (! recipientContract) {
-						EOAtransfer = true;
-						sales = [];
-						break;
-					}
-					if (amountSold == 0 && BigNumber(fromlog['data']) == airdropAmount) {
-						oneShotSold = true;
-						amountSold = airdropAmount;
-						sales.push([fromlog['data'],fromlog['topics'][2],fromlog['transactionHash'],fromlog['blockNumber']]);
-						break;
-					}
-					sales.push([fromlog['data'],fromlog['topics'][2],fromlog['transactionHash'],fromlog['blockNumber']]);
-					amountSold = amountSold + BigNumber(fromlog['data']);
-					if (amountSold == airdropAmount){break;}
-					indexfrom = indexfrom + 1;
-				}
-				if (fromlog['blockNumber'] == tolog['blockNumber']){
-					bothTransfer = true;
-					break;
-				}
-			}
-			acc[address] = [sales,code == "0x",otherUNI,bothTransfer,EOAtransfer,oneShotSold,amountSold == airdropAmount];
-			}
-			catch (err){
-				console.error(err);
-				if(! err.toString().includes("query returned more than 10000 results")) {throw 'Error!';}
-			}
-		
-	}
-	fs.writeFileSync('./addressDetails.json',JSON.stringify([count,acc]));
-	
-	for (var count = Math.max(i,addresses.length); count < 2*addresses.length;count++){
-		if (count % 1000 == 999) { 
-				fs.writeFileSync('./addressDetails.json',JSON.stringify([count,acc]));
-				console.log(count.toString() + ' out of ' + addresses.length.toString());
-			}
-		var address = addresses[count-addresses.length];	
-		var ethBalance = await archive.eth.getBalance("0x"+address.slice(26),"0xA5F138");
-		if (acc[address] != undefined){acc[address].push(ethBalance);}
-		
-	}
-	fs.writeFileSync('./addressDetails.json',JSON.stringify([count,acc]));
-}
-
 // retrieve all addresses that received an airdrop from a claim transaction
 async function getTrueAirdropRecipients(data, i, acc) {
 	const transferSignature = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
@@ -240,7 +146,7 @@ function processTrueRecipients(data) {
 	console.log('Finished processing true recipients!');
 }
 
-function mergeData(addDetails,newAddDetails) {
+function mergeData(newAddDetails) {
 	const tr = JSON.parse(fs.readFileSync('./trueRecipients.json'))[2];
 	const add = JSON.parse(fs.readFileSync('./addresses.json'));
 	var acc = [['Recipient','Claim Block Number','Airdrop Amount','Claim Tx Hash','Claim Tx Index','Claimer','Claimer = Recipient','Recipient EOA','Ether Balance','Other UNI Received',
@@ -262,20 +168,19 @@ function mergeData(addDetails,newAddDetails) {
 				}
 			}
 		}
-		const oldDetails = addDetails[1][addr];
 		var EOA;
 		var ethBalance;
 		const newDetails = newAddDetails[1][addr];
 		var bunch;
-		if (oldDetails && newDetails) {
-			const sales = oldDetails[0];
+		if (newDetails) {
+			const sales = newDetails[0];
 			for (var i=0;i<sales.length;i++){
 				const counterparty = sales[i][1];
 				if (counterparty in counterparties){counterparties[counterparty] = counterparties[counterparty] + 1;}
 				else{ counterparties[counterparty] = 1;}
 			}
-			EOA = oldDetails[1];
-			ethBalance = BigNumber(oldDetails[7]).div(10**18).toString();
+			EOA = newDetails[15];
+			ethBalance = BigNumber(newDetails[16]).div(10**18).toString();
 		
 			bunch = newDetails.slice(1);
 			acc.push([addr,tr[addr][0][0],BigNumber(tr[addr][0][1]).div(10**18).toString(),...tr[addr][0].slice(2),EOA,ethBalance,...bunch,...relevTrans,numErrors]);
@@ -319,6 +224,7 @@ async function saveLogs(addresses,i,acc) {
 	console.log('Logs saving completed!');
 }
 
+// retrieve needed information about recipients of the airdrop
 async function processLogs(i, acc, destinationContract, data, details) {
 	const addresses = Object.keys(data);
 	const swaps = ["0x000000000000000000000000d3d2e2692501a5c9ca623199d38826e513033a17",'0x0000000000000000000000005ac13261c181a9c3938bfe1b649e65d10f98566b',
@@ -339,6 +245,9 @@ async function processLogs(i, acc, destinationContract, data, details) {
 		const airdropAmount = BigNumber(details[address][0][1]);
 		const logsfrom = data[address][0];
 		const logsto = data[address][1];
+
+		var code = await eth.eth.getCode("0x"+address.slice(26));
+		var ethBalance = await archive.eth.getBalance("0x"+address.slice(26),"0xA5F138");
 			
 		var indexfrom = 0;
 		var indexto = 0;
@@ -422,7 +331,8 @@ async function processLogs(i, acc, destinationContract, data, details) {
 			var lastSale = 0;
 			if (sales.length > 0) {lastSale = sales[sales.length-1][3];}
 			acc[address] = [sales,otherUNI,bothTransfer,EOAtransfer,oneShotSold,amountSold.eq(airdropAmount),
-			amountSold.div(10**18).toString(),sales.length,logsfrom.length,logsto.length,indexfrom,indexto,lastSale,EOATransAmnt.div(10**18).toString(),swap.div(10**18).toString()];
+			amountSold.div(10**18).toString(),sales.length,logsfrom.length,logsto.length,indexfrom,indexto,lastSale,
+			EOATransAmnt.div(10**18).toString(),swap.div(10**18).toString(), code, ethBalance];
 		
 	}
 	fs.writeFileSync('./newAddressDetails.json',JSON.stringify([count,acc,destinationContract]));
@@ -470,17 +380,7 @@ async function main() {
 		}
 	}
 	var newDetails = JSON.parse(fs.readFileSync('./newAddressDetails.json'));
-	// if (!fs.existsSync('./addressDetails.json')) {
-		// await getAddressDetails(Object.keys(trueRecipients[2]).sort(),0,{},trueRecipients[2]);
-	// }
-	// else {
-		// var addressDetails = JSON.parse(fs.readFileSync('./addressDetails.json'));
-		// if (addressDetails[0] !== 2*Object.keys(trueRecipients[2]).length) {
-			// await getAddressDetails(Object.keys(trueRecipients[2]).sort(),addressDetails[0],addressDetails[1],trueRecipients[2]);
-		// }
-	// }
-	var addressDetails = JSON.parse(fs.readFileSync('./addressDetails.json'));
-	mergeData(addressDetails,newDetails);
+	mergeData(newDetails);
 	console.log('All done!');
 }
 
