@@ -182,7 +182,7 @@ function mergeData(newAddDetails) {
 			EOA = newDetails[15];
 			ethBalance = BigNumber(newDetails[16]).div(10**18).toString();
 		
-			bunch = newDetails.slice(1);
+			bunch = newDetails.slice(1,-2);
 			acc.push([addr,tr[addr][0][0],BigNumber(tr[addr][0][1]).div(10**18).toString(),...tr[addr][0].slice(2),EOA,ethBalance,...bunch,...relevTrans,numErrors]);
 		}
 	}
