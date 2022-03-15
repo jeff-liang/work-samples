@@ -332,7 +332,7 @@ async function processLogs(i, acc, destinationContract, data, details) {
 			if (sales.length > 0) {lastSale = sales[sales.length-1][3];}
 			acc[address] = [sales,otherUNI,bothTransfer,EOAtransfer,oneShotSold,amountSold.eq(airdropAmount),
 			amountSold.div(10**18).toString(),sales.length,logsfrom.length,logsto.length,indexfrom,indexto,lastSale,
-			EOATransAmnt.div(10**18).toString(),swap.div(10**18).toString(), code, ethBalance];
+			EOATransAmnt.div(10**18).toString(),swap.div(10**18).toString(), code === "0x", ethBalance];
 		
 	}
 	fs.writeFileSync('./newAddressDetails.json',JSON.stringify([count,acc,destinationContract]));
