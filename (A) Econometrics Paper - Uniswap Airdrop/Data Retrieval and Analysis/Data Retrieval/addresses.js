@@ -7,13 +7,14 @@ module.exports = {
 		var startBlock = 0;
 		var stopTime = 1633046400; // Oct 1 2021 (UTC)
 		var lastTime = 0;
+		while (lastTime < stopTime) {
 			let txlist = await fetch('https://api.etherscan.io/api?module=account&action=txlist&address='+tokenDistributor+'&startBlock='+startBlock+'&apikey='+key);
 			let data = await txlist.json();
 			procdata = data.result;
 			startBlock = procdata[procdata.length-1]['blockNumber'];
 			lastTime = procdata[procdata.length-1]['timeStamp'];
 			result.push.apply(result,procdata);
-		
+		}
 		return result;
 	},
 
