@@ -1,7 +1,7 @@
 # Jeffrey Liang's MA Economics Work Samples
 This is a collection of work I have done for graduate school that I'm proud of. Projects have deliberately been listed in this order to highlight my best work.
 
-The initial upload of files consists of the work that was submitted for evaluation or, if it was not required to be submitted, its state when the rest of the assignment was submitted. However, I have subsequently improved the data retrieval script for my Econometrics paper. All these edits can be seen as commits.
+The initial upload of files consists of the work that was submitted for evaluation or, if it was not required to be submitted, its state when the rest of the assignment was submitted. However, I have subsequently improved the code present. All these edits can be seen as commits.
 
 Enjoy!
 
