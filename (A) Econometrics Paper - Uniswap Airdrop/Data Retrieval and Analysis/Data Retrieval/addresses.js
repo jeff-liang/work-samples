@@ -2,14 +2,18 @@ const fetch = require('node-fetch');
 const fs = require("fs");
 const _ = require('lodash');
 
+const tokenDistributor = "0x090d4613473dee047c3f2706764f49e0821d256e";
+const stopTime = 1633046400; // Oct 1 2021 (UTC)
+
 module.exports = {
-	getData: async function (key,tokenDistributor) {
+	// Retrieve transaction info from all interactions with the airdrop contract from the Etherscan API
+	getData: async function () {
 		var result = [];
 		var startBlock = 0;
-		var stopTime = 1633046400; // Oct 1 2021 (UTC)
 		var lastTime = 0;
 		while (lastTime < stopTime) {
-			let txlist = await fetch('https://api.etherscan.io/api?module=account&action=txlist&address='+tokenDistributor+'&startBlock='+startBlock+'&apikey='+key);
+			let txlist = await fetch('https://api.etherscan.io/api?module=account&action=txlist&address='
+				+ tokenDistributor + '&startBlock=' + startBlock + '&apikey=' + process.env.etherscan_key);
 			let data = await txlist.json();
 			procdata = data.result;
 			startBlock = procdata[procdata.length-1]['blockNumber'];
@@ -19,18 +23,18 @@ module.exports = {
 		return result;
 	},
 
-	// retrieve all addresses that initiated a claim from the airdrop before Oct 1 2021
+	// Retrieve all addresses that initiated a claim from the airdrop before Oct 1 2021
+	// and group their transactions together
 	getAddresses: async function () {
-		const tokenDistributor = "0x090d4613473dee047c3f2706764f49e0821d256e";
-
-		claimData = await module.exports.getData(process.env.etherscan_key, tokenDistributor);
-		console.log(claimData.length);
+		claimData = await module.exports.getData();
+		console.log("We have collected" + claimData.length + " transactions.");
 
 		// remove duplicates and too late claims
-		filteredData = _.filter(claimData, tx => tx['timeStamp'] < 1633046400);
+		filteredData = _.filter(claimData, tx => tx['timeStamp'] < stopTime);
 		filteredData = _.uniq(filteredData);
 		
-		console.log(filteredData.length);
+		console.log("After removing duplicate transactions and transactions that come after our \
+			cutoff date, we have " + filteredData.length + " transactions left.");
 
 		var addressList = _.groupBy(filteredData, tx => tx["from"]);
 		_.forEach(addressList, (claimerTx, address) => addressList[address] = claimerTx.map(tx =>
@@ -45,4 +49,3 @@ module.exports = {
 		fs.writeFileSync('./addresses.json',JSON.stringify(data));
 	}
 };
-
