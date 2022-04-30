@@ -25,35 +25,11 @@ module.exports = {
 
 		claimData = await module.exports.getData(process.env.etherscan_key, tokenDistributor);
 		console.log(claimData.length);
-		filteredData = [];
-		i = 0;
-		while (1==1) { // remove duplicates and too late claims
-			j = i+1;
-			block = claimData[i]['blockNumber'];
-			if (claimData[i]['timeStamp'] >= 1633046400) {
-				break;
-			}
-			while (1==1) {
-				if (claimData.length < j+1) {
-					break;
-				}
-				if (claimData[j]['blockNumber'] !== block) {
-					break;
-				}
-				j++;
-			}
-			blockData = claimData.slice(i,j);
-			blockData = blockData.filter((thing,index,self) =>
-				index === self.findIndex((t) => (
-					t.hash === thing.hash
-				))
-			);
-			filteredData.push.apply(filteredData,blockData);
-			if (claimData.length < j+1) {
-				break;
-			}
-			i = j;
-		}
+
+		// remove duplicates and too late claims
+		filteredData = _.filter(claimData, tx => tx['timeStamp'] < 1633046400);
+		filteredData = _.uniq(filteredData);
+		
 		console.log(filteredData.length);
 
 		var addressList = _.groupBy(filteredData, tx => tx["from"]);
