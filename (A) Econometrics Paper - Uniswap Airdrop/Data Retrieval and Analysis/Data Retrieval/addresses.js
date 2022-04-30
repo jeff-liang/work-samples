@@ -1,5 +1,6 @@
 const fetch = require('node-fetch');
 const fs = require("fs");
+const _ = require('lodash');
 
 module.exports = {
 	getData: async function (key,tokenDistributor) {
@@ -54,28 +55,17 @@ module.exports = {
 			i = j;
 		}
 		console.log(filteredData.length);
-		var address_list = {};
-		for (index in filteredData) {
-			var transaction = filteredData[index];
-			if (transaction["from"] in address_list) {
-				address_list[transaction["from"]].push(
-				[transaction["hash"],
-				transaction["blockNumber"],
-				transaction["timeStamp"],
-				transaction["nonce"],
-				transaction["gasPrice"],
-				transaction["isError"]]);
-			}
-			else {
-				address_list[transaction["from"]] = [[transaction["hash"],
-				transaction["blockNumber"],
-				transaction["timeStamp"],
-				transaction["nonce"],
-				transaction["gasPrice"],
-				transaction["isError"]]];
-			}
-		}
-		data = [filteredData, address_list];
+
+		var addressList = _.groupBy(filteredData, tx => tx["from"]);
+		_.forEach(addressList, (claimerTx, address) => addressList[address] = claimerTx.map(tx =>
+			[tx["hash"],
+			tx["blockNumber"],
+			tx["timeStamp"],
+			tx["nonce"],
+			tx["gasPrice"],
+			tx["isError"]]
+		));
+		data = [filteredData, addressList];
 		fs.writeFileSync('./addresses.json',JSON.stringify(data));
 	}
 };
