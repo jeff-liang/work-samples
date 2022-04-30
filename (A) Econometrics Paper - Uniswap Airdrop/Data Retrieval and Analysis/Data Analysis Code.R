@@ -4,10 +4,13 @@ library("dplyr")
 library(ggplot2)
 options(digits=18)
 
+# Load data
 data <- fromJSON(txt="C:/Users/Jeffrey/Desktop/ECO1400/Paper/data.json")
 data <- as.data.frame(data)
 data <- row_to_names(dat=data,row_number=1)
 data <- clean_names(data)
+
+# Convert types
 data$claim_block_number <- strtoi(data$claim_block_number)
 data$airdrop_amount <- as.double(data$airdrop_amount)
 data$claim_tx_index <- strtoi(data$claim_tx_index)
@@ -34,44 +37,53 @@ data$number_of_claim_errors <- as.numeric(data$number_of_claim_errors)
 data$amount_transferred_to_eo_as <- as.double(data$amount_transferred_to_eo_as)
 data$amount_swapped <- as.double(data$amount_swapped)
 data$date <- as.POSIXct(data$claim_timestamp,origin="1970-01-01",tz="UCT")
+
+# Create a few more variables from the existing ones
 data$delta <- data$block_number_of_last_sale - data$claim_block_number
 data$percent_sold <- data$total_uni_sold / data$airdrop_amount
 data$percent_swapped <- data$amount_swapped / data$airdrop_amount
-
-summary(data$recipient_eoa)
-summary(data$both_transfer_and_received_in_a_single_block)
-
 data$percent_eoa <- data$amount_transferred_to_eo_as / data$airdrop_amount
 
+# Remove outliers: recipients of airdrop which were contracts and recipients who retrieved their airdrop
+# and sent it away in a single block.
+summary(data$recipient_eoa)
+summary(data$both_transfer_and_received_in_a_single_block)
 filtered <- filter(data,recipient_eoa & 
                      !both_transfer_and_received_in_a_single_block)
 
+# Examine the recipients based on whether they received UNI from any other source before selling their airdrop
+# and compare the wealth of these accounts
 summary(filtered$other_uni_received)
 summary(subset(filtered,other_uni_received,select=ether_balance))
 summary(subset(filtered,!other_uni_received,select=ether_balance))
 
+# Remove those who accumulated more
 filtered <- filter(filtered,!other_uni_received)
-same_claim <- filter(filtered, claimer_recipient)
 
+# Examine how many people transferred their airdrop to another non-contract account and how much
 summary(filtered$transferred_to_eoa)
-
 summary(subset(filtered,transferred_to_eoa,select=percent_eoa))
 summary(filtered$percent_eoa > 0 & filtered$percent_eoa < 1)
 
+# Examine when people claimed their airdrop
 summary(filtered$claim_block_number)
 
+# Examine characteristics of those who transferred away some of their airdrop
 sold <- filter(filtered, block_number_of_last_sale > 0)
 summary(sold$completely_sold_in_one_transaction)
 summary(sold$delta)
 summary(sold$block_number_of_last_sale)
 
+# Examine those who sent some of their airdrop to the most popular decentralized exchanges
 swapped <- filter(filtered, amount_swapped > 0)
 summary(swapped$completely_sold_in_one_transaction)
 summary(swapped$delta)
 summary(swapped$block_number_of_last_sale)
 
+# Examine the airdrop recipients with basically no Ether in their account at the time of the airdrop
 summary(subset(filtered,log(ether_balance) < -10))
 
+# Plot some interesting and suggestive graphs
 pdf('eth_percent.pdf')
 ggplot(filtered,aes(x=log(ether_balance),y=percent_sold)) + geom_point(size=1,alpha=1/5) +
   labs(x = "Log of Ether Balance Before Airdrop",
@@ -93,10 +105,13 @@ labs(y = "Log of Ether Balance Before Airdrop") +
 labs(title = "Log of Ether Balance Against Time of Airdrop Claim")
 dev.off()
 
+same_claim <- filter(filtered, claimer_recipient)
+
 pdf('eth_error.pdf')
 ggplot(same_claim,aes(x=number_of_claim_errors,y=log(ether_balance))) + geom_point(size=1,alpha=1/5) +
   labs(x = "Number of Failed Claim Attempts",
        y = "Log of Ether Balance Before Airdrop",
        title = "Log of Ether Balance Against Number of Failed Claim Attempts")
+
 dev.off()
 
