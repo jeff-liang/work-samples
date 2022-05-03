@@ -42,15 +42,14 @@ try:
     with open('Value_Fn.json', 'r') as f:
         value_function_list = json.load(f)
         value_function = numpy.array(value_function_list[0])
-        if len(value_function_list) > 1:
-            value_function_Q5 = numpy.array(value_function_list[1])
-        if len(value_function_list) > 2:
-            value_function_Q6 = numpy.array(value_function_list[2])
-        if len(value_function_list) > 3:
-            value_function_Q8 = numpy.array(value_function_list[3])
-        print("Successfully loaded first " + str(len(value_function_list)) + " value functions from file.")
+        value_function_Q5 = numpy.array(value_function_list[1])
+        value_function_Q6 = numpy.array(value_function_list[2])
+        value_function_Q8 = numpy.array(value_function_list[3])
+        print("Successfully loaded all value functions from file.")
 except FileNotFoundError:
     print("Could not find saved value functions. Recomputing.")
+except IndexError:
+    print("Successfully loaded first " + str(len(value_function_list)) + " value functions from file.")
 
 # this function does one iteration of the value function iteration
 def single_iteration(beta, alpha, delta, grid, current_value_function, full_RBC):
