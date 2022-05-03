@@ -13,12 +13,12 @@ module.exports = {
 	getTrueAirdropRecipients: async function (data, i, acc) {
 		
 		const addresses = Object.keys(data[1]).sort();
-		for (var count = i; count < addresses.length ;count ++) {
+		_.forEach(addresses.slice(i), (address, index) => {
+			const count = index + i;
 			if (count % 1000 == 999) { 
 				fs.writeFileSync('./trueRecipients.json',JSON.stringify([count,acc]));
 				console.log(`${count.toString()} out of ${addresses.length.toString()}`);
 			}
-			const address = addresses[count];
 			var arrLogs = [];
 			_.forEach(data[1][address], (tx) => {
 				const dataString = JSON.stringify({jsonrpc:"2.0",method:"eth_getTransactionReceipt",
@@ -33,7 +33,7 @@ module.exports = {
 				arrLogs.push(info['result']['logs']);
 			});
 			acc[address] = arrLogs;
-		}
+		});
 		fs.writeFileSync('./trueRecipients.json',JSON.stringify([count,acc]));
 	},
 
