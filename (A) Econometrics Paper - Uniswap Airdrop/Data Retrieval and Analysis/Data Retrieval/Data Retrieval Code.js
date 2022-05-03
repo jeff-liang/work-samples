@@ -13,33 +13,39 @@ async function main() {
 	if (!fs.existsSync('./addresses.json')) {
 		await getAddr.getAddresses();
 	}
+
 	var addData = JSON.parse(fs.readFileSync('./addresses.json'));
 	const addresses = addData[1];
+
 	if (!fs.existsSync('./trueRecipients.json')) {
 		await getTrueRecip.getTrueAirdropRecipients(addData, 0, {});
 	}
 	else{
 		var trueRecipients = JSON.parse(fs.readFileSync('./trueRecipients.json'));
-		if (trueRecipients[0] != Object.keys(addresses).length) {
-			await getTrueRecip.getTrueAirdropRecipients(addData,trueRecipients[0],trueRecipients[1]);
+		if (trueRecipients[0] !== Object.keys(addresses).length) {
+			await getTrueRecip.getTrueAirdropRecipients(addData,
+				trueRecipients[0],trueRecipients[1]);
 		}
 	}
 	addData = null;
+
 	trueRecipients = JSON.parse(fs.readFileSync('./trueRecipients.json'));
 	if (trueRecipients.length < 3) {
 		getTrueRecip.processTrueRecipients(trueRecipients);
 	}
 	trueRecipients = JSON.parse(fs.readFileSync('./trueRecipients.json'));
+
 	if (!fs.existsSync('./logs.json')) {
 		await getLogs.saveLogs(Object.keys(trueRecipients[2]).sort(),0,{});
 	}
 	else{
 		var logs = JSON.parse(fs.readFileSync('./logs.json'));
-		if (logs[0] != Object.keys(trueRecipients[2]).length) {
+		if (logs[0] !== Object.keys(trueRecipients[2]).length) {
 			await getLogs.saveLogs(Object.keys(trueRecipients[2]).sort(),logs[0],logs[1]);
 		}
 	}
-	var logs = JSON.parse(fs.readFileSync('./logs.json'));
+	logs = JSON.parse(fs.readFileSync('./logs.json'));
+
 	if(!fs.existsSync('./newAddressDetails.json')){
 		await getLogs.processLogs(0,{},{},logs[1],trueRecipients[2]);
 	}
@@ -50,6 +56,7 @@ async function main() {
 		}
 	}
 	var newDetails = JSON.parse(fs.readFileSync('./newAddressDetails.json'));
+	
 	mergeData.mergeData(newDetails);
 	console.log('All done!');
 }
